@@ -15,12 +15,14 @@ spec:
   template:
     metadata:
       annotations:
-        iam.amazonaws.com/role: kube2iam-ingress-role
+        iam.amazonaws.com/role: arn:aws:iam::000474600478:role/kube2iam-ingress-role
       labels:
         control-plane: controller-manager
         controller-tools.k8s.io: "1.0"
     spec:
       serviceAccountName: {{ .Release.Name }}-amzn-apigw-ingress-controller
+      nodeSelector:
+        eks.amazonaws.com/nodegroup: nodegroup      
       containers:
       - command:
         - /manager

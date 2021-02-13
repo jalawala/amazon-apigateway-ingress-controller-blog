@@ -1,0 +1,179 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: book
+  namespace: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: book
+  template:
+    metadata:
+      labels:
+        app: book
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.3
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: workdir
+          mountPath: /usr/share/nginx/html
+  # These containers are run during pod initialization
+      initContainers:
+      - name: install
+        image: bitnami/git
+        command: ["git"]
+        args: ["clone", "https://github.com/aws-samples/amazon-apigateway-ingress-controller-blog.git", "/var/lib/data/"]
+        volumeMounts:
+        - name: workdir
+          mountPath: "/var/lib/data"
+      dnsPolicy: Default
+      volumes:
+      - name: workdir
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: author
+  namespace: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: author
+  template:
+    metadata:
+      labels:
+        app: author
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.3
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: workdir
+          mountPath: /usr/share/nginx/html
+  # These containers are run during pod initialization
+      initContainers:
+      - name: install
+        image: bitnami/git
+        command: ["git"]
+        args: ["clone", "https://github.com/aws-samples/amazon-apigateway-ingress-controller-blog.git", "/var/lib/data/"]
+        volumeMounts:
+        - name: workdir
+          mountPath: "/var/lib/data"
+      dnsPolicy: Default
+      volumes:
+      - name: workdir
+        emptyDir: {}
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app3
+  namespace: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app3
+  template:
+    metadata:
+      labels:
+        app: app3
+    spec:
+      containers:
+        - name: app
+          image: "672518094988.dkr.ecr.us-west-2.amazonaws.com/hello-world:v1.0"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9080
+          env:
+            - name: "HW_RESPONSE"
+              value: "[\"Hello from app3\"]"
+---  
+apiVersion: v1
+kind: Service
+metadata:
+  name: service1
+  namespace: dev
+spec:
+  type: ClusterIP
+  selector:
+    app: book
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  name: service2
+  namespace: dev
+spec:
+  type: ClusterIP
+  selector:
+    app: author
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+--- 
+apiVersion: v1
+kind: Service
+metadata:
+  name: service3
+  namespace: dev
+  labels:
+    app: app3
+spec:
+  type: ClusterIP    
+  selector:
+    app: app3
+  ports:
+  - protocol: TCP
+    port: 9080
+    targetPort: 9080
+--- 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    apigateway.ingress.kubernetes.io/client-arns: arn:aws:iam::000474600478:user/apigw-user
+    apigateway.ingress.kubernetes.io/dev-name: dev
+    kubernetes.io/ingress.class: apigateway
+    apigateway.ingress.kubernetes.io/nginx-replicas: "3"
+    apigateway.ingress.kubernetes.io/nginx-image: nginx:latest
+    apigateway.ingress.kubernetes.io/nginx-service-port: "9090"    
+  name: dev-ingress
+  namespace: dev
+spec:
+  rules:
+    - http:
+        paths:
+        - backend:
+            serviceName: service1
+            servicePort: 80
+          path: /api/book
+        - backend:
+            serviceName: service2
+            servicePort: 80
+          path: /api/author
+    - http:
+        paths:
+        - backend:
+            serviceName: service3
+            servicePort: 9080
+          path: /

@@ -13,7 +13,7 @@
       "Sid": "",
       "Effect": "Allow",
       "Principal": {
-        "AWS": "eksctl-eksworkshop-blog-nodegroup-NodeInstanceRole-18S8TPGM0CD2T"
+        "AWS": "arn:aws:iam::000474600478:role/eksctl-eksworkshop-nodegroup-node-NodeInstanceRole-8YUS61VM06SQ"
       },
       "Action": "sts:AssumeRole"
     }
